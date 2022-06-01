@@ -1,30 +1,31 @@
 ﻿namespace demo;
-
 class Program
 {
-    private static readonly Random NumberGenerator = new Random();
-
-    public static async Task Main()
+    public static Task Main()
     {
-        var t1 = ExecuteAsync("first");
-        var t2 = ExecuteAsync("second");
-        var t3 = ExecuteAsync("third");
+        CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        TaskFactory taskFactory = new TaskFactory();
 
-        Task<Task<string>> anyTaskFinished = Task.WhenAny(t1, t2, t3);
+        Task longRunningTask = taskFactory.StartNew(
+            () => TimeConsumingWork(cts.Token),
+            cts.Token,
+            TaskCreationOptions.LongRunning,
+            TaskScheduler.Default);
 
-        Task<string[]> allTasksFinished = Task.WhenAll(t1, t2, t3);
+        // if you await the task it will not be longrunning any longer
 
-        string nameOfWinner = (await anyTaskFinished).Result;
-
-        Console.WriteLine(nameOfWinner);
-
-        await allTasksFinished;
+        return longRunningTask;
     }
 
-    private static async Task<string> ExecuteAsync(string name)
+    private static void TimeConsumingWork(CancellationToken ct)
     {
-        await Task.Delay(TimeSpan.FromSeconds(NumberGenerator.Next(1, 3)));
-
-        return name;
+        // Very time consuming work...
+        int i = 0;
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            i++;
+            Console.WriteLine($"We are on iteration number {i}");
+        }
     }
 }

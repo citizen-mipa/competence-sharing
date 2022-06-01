@@ -1,6 +1,7 @@
 ﻿//namespace demo;
 //class Program
 //{
+//    // Reminder: Look at anatomy of a task
 //    public static async Task Main()
 //    {
 //        int bytesRead = await ExecuteAsync();
