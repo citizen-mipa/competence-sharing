@@ -2,31 +2,29 @@
 
 class Program
 {
-    public static void Main()
+    private static readonly Random NumberGenerator = new Random();
+
+    public static async Task Main()
     {
-       
-        FileStream fs = new FileStream(
-            @"../net6.0/Data/data.json",
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            1024,
-            FileOptions.Asynchronous);
+        var t1 = ExecuteAsync("first");
+        var t2 = ExecuteAsync("second");
+        var t3 = ExecuteAsync("third");
 
-        Byte[] data = new Byte[100];
+        Task<Task<string>> anyTaskFinished = Task.WhenAny(t1, t2, t3);
 
-        IAsyncResult ar = fs.BeginRead(data, 0, data.Length, Callback, fs);
+        Task<string[]> allTasksFinished = Task.WhenAll(t1, t2, t3);
 
-        Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+        string nameOfWinner = (await anyTaskFinished).Result;
 
-        ar.AsyncWaitHandle.WaitOne();
+        Console.WriteLine(nameOfWinner);
+
+        await allTasksFinished;
     }
 
-    private static void Callback(IAsyncResult result)
+    private static async Task<string> ExecuteAsync(string name)
     {
-        FileStream fs = (FileStream)result.AsyncState!;
-        int bytesRead = fs.EndRead(result);
+        await Task.Delay(TimeSpan.FromSeconds(NumberGenerator.Next(1, 3)));
 
-        Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+        return name;
     }
 }
