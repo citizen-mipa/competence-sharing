@@ -1,31 +1,96 @@
 ﻿namespace demo;
 class Program
 {
-    public static Task Main()
+    public static async Task Main()
     {
-        CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-        TaskFactory taskFactory = new TaskFactory();
+        CalculationWrapper wrapper = new CalculationWrapper();
 
-        Task longRunningTask = taskFactory.StartNew(
-            () => TimeConsumingWork(cts.Token),
-            cts.Token,
-            TaskCreationOptions.LongRunning,
-            TaskScheduler.Default);
+        CancellationTokenSource cts = new CancellationTokenSource();
+        Task<int> calculationTask = wrapper.StartCalculationAsync(cts.Token);
 
-        // if you await the task it will not be longrunning any longer
+        //await Task.Delay(TimeSpan.FromSeconds(2));
+        //cts.Cancel();
 
-        return longRunningTask;
-    }
-
-    private static void TimeConsumingWork(CancellationToken ct)
-    {
-        // Very time consuming work...
-        int i = 0;
-        while (true)
+        try
         {
-            ct.ThrowIfCancellationRequested();
-            i++;
-            Console.WriteLine($"We are on iteration number {i}");
+            int calculationResult = await calculationTask;
+            Console.WriteLine($"result was {calculationResult}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Caught an exception: {ex}");
         }
     }
+}
+
+class CalculationWrapper
+{
+    private readonly Calculation _calculation;
+
+    public CalculationWrapper()
+    {
+        _calculation = new Calculation();
+    }
+
+    public Task<int> StartCalculationAsync(CancellationToken ct)
+    {
+        // Allows full control over the task state machine. A useful tool for example when trying to hide event based communication.
+        TaskCompletionSource<int> tcs = new TaskCompletionSource<int>();
+
+        try
+        {
+            // This protects calling code though we cant stop calculation
+            ct.Register(() =>
+            {
+                tcs.TrySetCanceled(ct);
+            });
+
+            _calculation.CalculationDone += (sender, eventArgs) =>
+            {
+                tcs.TrySetResult(((CalculationDoneEventArgs)eventArgs).CalculationResult);
+            };
+
+            if (!ct.IsCancellationRequested)
+            {
+                _calculation.StartCalculationsInServerCluster();
+            }  
+        }
+        catch (Exception ex)
+        {
+            tcs.TrySetException(ex);
+        } 
+
+        return tcs.Task;
+    }
+}
+
+class Calculation
+{
+    public event EventHandler CalculationDone = delegate { };
+
+    protected virtual void OnCalculationDone(CalculationDoneEventArgs e)
+    {
+        EventHandler handler = CalculationDone;
+        handler?.Invoke(this, e);
+    }
+
+    public void StartCalculationsInServerCluster()
+    {
+        Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(5));
+
+            OnCalculationDone(new CalculationDoneEventArgs(42));
+        });
+    }
+}
+
+class CalculationDoneEventArgs : EventArgs
+{
+    public CalculationDoneEventArgs(int calculatioResult)
+    {
+        CalculationResult = calculatioResult;
+    }
+
+    public int CalculationResult { get; }
 }
