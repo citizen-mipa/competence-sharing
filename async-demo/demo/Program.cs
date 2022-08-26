@@ -4,28 +4,23 @@ class Program
 {
     public static void Main()
     {
-        FileStream fs = new FileStream(
-            @"../net6.0/Data/data.json",
-            FileMode.Open,
-            FileAccess.Read,
-            FileShare.Read,
-            1024,
-            FileOptions.Asynchronous);
+        var thread = new Thread(Execute);
+        thread.Start();
 
-        Byte[] data = new Byte[100];
+        //ThreadPool.QueueUserWorkItem(ExecuteUsingThreadPool);
 
-        IAsyncResult ar = fs.BeginRead(data, 0, data.Length, Callback, fs);
+        Thread.Sleep(1000);
 
         Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
-
-        ar.AsyncWaitHandle.WaitOne();
     }
 
-    private static void Callback(IAsyncResult result)
+    private static void Execute()
     {
-        FileStream fs = (FileStream)result.AsyncState!;
-        int bytesRead = fs.EndRead(result);
+        Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+    }
 
+    private static void ExecuteUsingThreadPool(Object stateInfo)
+    {
         Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
     }
 }
