@@ -1,0 +1,38 @@
+﻿using System.Collections.Concurrent;
+
+namespace demo;
+class Program
+{
+    private static readonly Random NumberGenerator = new Random();
+    private static readonly ConcurrentBag<Money> MoneyTransactions = new ConcurrentBag<Money>();
+
+    // System.Collections.Concurrent
+    // ConcurrentDictionary
+    // ConcurrentQueue
+    // ConcurrentStack
+    // BlockingCollection
+
+    public static async Task Main()
+    {
+        IList<Task> transactions = new List<Task>();
+        // This is essentially fan-out + fan-in
+        for (int i = 0; i < 10; i++)
+        {
+            transactions.Add(AddMoneyTransactionToQueueAsync());
+        }
+
+        await Task.WhenAll(transactions);
+
+        Console.WriteLine($"sum is {MoneyTransactions.Sum(item => item.value)}");
+    }
+
+    private static async Task AddMoneyTransactionToQueueAsync()
+    {
+        // pretend to call another service to get money transaction
+        await Task.Delay(TimeSpan.FromSeconds(NumberGenerator.Next(0, 2)));
+
+        MoneyTransactions.Add(new Money(NumberGenerator.Next(1, 1000)));
+    }
+
+    private record Money(int value);
+}

@@ -1,0 +1,32 @@
+﻿namespace demo;
+
+class Program
+{
+    public static Task Main()
+    {
+        Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+
+        return ExecuteAsync().ContinueWith(t =>
+        {
+            Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+            Console.WriteLine(t.Result);
+        });
+    }
+
+    private static Task<int> ExecuteAsync()
+    {
+        Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+
+        using FileStream fs = new FileStream(
+            @"../net6.0/Data/data.json",
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            1024,
+            FileOptions.Asynchronous);
+
+        Byte[] data = new Byte[100];
+
+        return fs.ReadAsync(data, 0, data.Length);
+    }
+}

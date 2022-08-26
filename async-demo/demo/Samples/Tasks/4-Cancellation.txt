@@ -1,0 +1,51 @@
+﻿namespace demo;
+class Program
+{
+    public static async Task Main()
+    {
+        // Note that normally in ex an Azure Function a CancellationToken is available in function signature
+        CancellationTokenSource cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+
+        //using CancellationTokenRegistration registration = cts.Token.Register(() =>
+        //{
+        //    Console.WriteLine("Cancellation callback excecuted");
+        //});
+
+        cts.Cancel();
+
+        var first = ExecuteAsync(cts.Token);
+        var second = ExecuteAsync(cts.Token);
+
+        try
+        {
+            await Task.WhenAll(first, second);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Caught an exception: {ex}");
+        }
+
+        Console.WriteLine("Finished executing");
+    }
+
+    private static async Task ExecuteAsync(CancellationToken ct)
+    {
+        //ct.ThrowIfCancellationRequested();
+
+        using FileStream fs = new FileStream(
+            @"../net6.0/Data/data.json",
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            1024,
+            FileOptions.Asynchronous);
+
+        Byte[] data = new Byte[100];
+
+        Console.WriteLine("Just before it is time to read");
+
+        int numberOfBytes = await fs.ReadAsync(data, 0, data.Length, ct);
+
+        Console.WriteLine($"Finished reading {numberOfBytes} bytes");
+    }
+}
